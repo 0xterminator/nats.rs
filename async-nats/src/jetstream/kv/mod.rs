@@ -36,7 +36,7 @@ use self::bucket::Status;
 
 use super::{
     consumer::{push::OrderedError, DeliverPolicy, StreamError, StreamErrorKind},
-    context::{PublishError, PublishErrorKind},
+    context::{Publish, PublishError, PublishErrorKind},
     message::StreamMessage,
     stream::{
         self, ConsumerError, ConsumerErrorKind, DirectGetError, DirectGetErrorKind, Republish,
@@ -301,10 +301,12 @@ impl Store {
         subject.push_str(self.put_prefix.as_ref().unwrap_or(&self.prefix));
         subject.push_str(key.as_ref());
 
+        let publish_payload = Publish::build().message_id(subject.clone()).payload(value);
+
         let publish_ack = self
             .stream
             .context
-            .publish(subject, value)
+            .send_publish(subject, publish_payload)
             .await
             .map_err(|err| PutError::with_source(PutErrorKind::Publish, err))?;
         let ack = publish_ack
